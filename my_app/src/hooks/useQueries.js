@@ -57,3 +57,24 @@ export const useUpdateStock = () => {
         },
     });
 };
+
+export const useUpdateProduct = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, data }) => catalogService.update(id, data),
+        onSuccess: (data, variables) => {
+            queryClient.invalidateQueries(['products']);
+            queryClient.invalidateQueries(['products', variables.id]);
+        },
+    });
+};
+
+export const useDeleteProduct = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: catalogService.delete,
+        onSuccess: () => {
+            queryClient.invalidateQueries(['products']);
+        },
+    });
+};

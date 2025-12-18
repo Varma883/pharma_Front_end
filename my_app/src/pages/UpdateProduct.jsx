@@ -1,12 +1,16 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { catalogService } from '../services/catalog';
+import { useProduct, useUpdateProduct } from '../hooks/useQueries';
 import { Button } from '../components/Button';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { ArrowLeft, Edit, Save, Plus, Loader2 } from 'lucide-react';
 
-const CreateProduct = () => {
+const UpdateProduct = () => {
+    const { id } = useParams();
     const navigate = useNavigate();
-    const [isLoading, setIsLoading] = useState(false);
+    const { data: product, isLoading: isProductLoading } = useProduct(id);
+    const { mutate: updateProduct, isLoading: isUpdating } = useUpdateProduct();
+
     const [formData, setFormData] = useState({
         name: '',
         manufacturer: '',
@@ -18,6 +22,22 @@ const CreateProduct = () => {
 
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
+
+    useEffect(() => {
+        if (product) {
+            setFormData({
+                name: product.name || '',
+                manufacturer: product.manufacturer || '',
+                ndc: product.ndc || '',
+                form: product.form || '',
+                strength: product.strength || '',
+                price: product.price || ''
+            });
+            if (product.image_url) {
+                setImagePreview(product.image_url);
+            }
+        }
+    }, [product]);
 
     const handleImageChange = (e) => {
         const file = e.target.files[0];
@@ -33,63 +53,64 @@ const CreateProduct = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setIsLoading(true);
-        try {
-            const formDataToSend = new FormData();
-            formDataToSend.append('name', formData.name);
-            formDataToSend.append('manufacturer', formData.manufacturer);
-            formDataToSend.append('ndc', formData.ndc);
-            formDataToSend.append('form', formData.form || '');
-            formDataToSend.append('strength', formData.strength || '');
-            formDataToSend.append('price', formData.price ? parseFloat(formData.price) : 0);
 
-            if (imageFile) {
-                // The Postman response used 'image_url' but usually files are sent as 'image' or 'file'
-                // Based on common patterns in this repo, let's try 'image'
-                formDataToSend.append('image', imageFile);
-            }
+        const data = new FormData();
+        data.append('name', formData.name);
+        data.append('manufacturer', formData.manufacturer);
+        data.append('ndc', formData.ndc);
+        data.append('form', formData.form);
+        data.append('strength', formData.strength);
+        data.append('price', parseFloat(formData.price) || 0);
 
-            await catalogService.create(formDataToSend);
-            navigate('/catalog');
-        } catch (error) {
-            console.error("Failed to create product", error);
-            alert("Failed to create product: " + (error.response?.data?.detail || error.message));
-        } finally {
-            setIsLoading(false);
+        if (imageFile) {
+            data.append('image', imageFile);
         }
+
+        updateProduct({ id, data }, {
+            onSuccess: () => navigate(`/catalog/${id}`),
+            onError: (err) => alert("Failed to update product: " + (err.response?.data?.detail || err.message))
+        });
     };
+
+    if (isProductLoading) {
+        return (
+            <div className="flex justify-center items-center py-20">
+                <Loader2 className="w-10 h-10 animate-spin text-primary" />
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-2xl mx-auto py-10 px-4">
             <button
-                onClick={() => navigate('/catalog')}
+                onClick={() => navigate(`/catalog/${id}`)}
                 className="flex items-center text-gray-600 hover:text-primary mb-6 transition-colors"
             >
                 <ArrowLeft className="w-5 h-5 mr-2" />
-                Back to Catalog
+                Back to Product
             </button>
 
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
                 <h1 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                    <div className="p-2 bg-teal-50 rounded-lg">
-                        <Plus className="w-6 h-6 text-primary" />
+                    <div className="p-2 bg-blue-50 rounded-lg">
+                        <Edit className="w-6 h-6 text-blue-600" />
                     </div>
-                    Add New Product
+                    Update Product
                 </h1>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Image Upload Area */}
                     <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-200 rounded-2xl hover:border-primary transition-colors bg-gray-50/50 group">
                         {imagePreview ? (
-                            <div className="relative w-full aspect-video rounded-xl overflow-hidden mb-4">
-                                <img src={imagePreview} alt="Preview" className="w-full h-full object-contain" />
-                                <button
-                                    type="button"
-                                    onClick={() => { setImageFile(null); setImagePreview(null); }}
-                                    className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600 transition-colors"
-                                >
-                                    <Plus className="w-4 h-4 rotate-45" />
-                                </button>
+                            <div className="relative w-full aspect-video rounded-xl overflow-hidden mb-4 bg-white shadow-inner flex items-center justify-center">
+                                {/* Using normal img for preview, AuthImage not needed for local preview or initial loaded URL if handled by browser cache, but AuthImage is safer for subsequent loads */}
+                                <img src={imagePreview} alt="Preview" className="max-h-full object-contain" />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <label className="cursor-pointer bg-white text-gray-900 px-4 py-2 rounded-lg font-medium shadow-lg hover:bg-gray-50">
+                                        Change Image
+                                        <input type="file" className="hidden" accept="image/*" onChange={handleImageChange} />
+                                    </label>
+                                </div>
                             </div>
                         ) : (
                             <label className="flex flex-col items-center justify-center cursor-pointer w-full h-32">
@@ -109,7 +130,6 @@ const CreateProduct = () => {
                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none"
                             value={formData.name}
                             onChange={e => setFormData({ ...formData, name: e.target.value })}
-                            placeholder="e.g. Paracetamol 500mg"
                         />
                     </div>
 
@@ -121,7 +141,6 @@ const CreateProduct = () => {
                                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none"
                                 value={formData.manufacturer}
                                 onChange={e => setFormData({ ...formData, manufacturer: e.target.value })}
-                                placeholder="e.g. Zenith Pharma"
                             />
                         </div>
                         <div>
@@ -133,7 +152,6 @@ const CreateProduct = () => {
                                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none"
                                 value={formData.price}
                                 onChange={e => setFormData({ ...formData, price: e.target.value })}
-                                placeholder="0.00"
                             />
                         </div>
                     </div>
@@ -146,7 +164,6 @@ const CreateProduct = () => {
                                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none"
                                 value={formData.ndc}
                                 onChange={e => setFormData({ ...formData, ndc: e.target.value })}
-                                placeholder="00000-0000"
                             />
                         </div>
                         <div>
@@ -155,7 +172,6 @@ const CreateProduct = () => {
                                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none"
                                 value={formData.form}
                                 onChange={e => setFormData({ ...formData, form: e.target.value })}
-                                placeholder="e.g. Tablet, Capsule"
                             />
                         </div>
                     </div>
@@ -166,13 +182,26 @@ const CreateProduct = () => {
                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none"
                             value={formData.strength}
                             onChange={e => setFormData({ ...formData, strength: e.target.value })}
-                            placeholder="e.g. 500mg"
                         />
                     </div>
 
                     <div className="pt-4">
-                        <Button type="submit" disabled={isLoading} className="w-full">
-                            {isLoading ? 'Creating...' : 'Create Product'}
+                        <Button
+                            type="submit"
+                            disabled={isUpdating}
+                            className="w-full py-4 text-lg font-bold flex items-center justify-center gap-2 shadow-lg shadow-blue-100"
+                        >
+                            {isUpdating ? (
+                                <>
+                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                    Updating...
+                                </>
+                            ) : (
+                                <>
+                                    <Save className="w-5 h-5" />
+                                    Save Changes
+                                </>
+                            )}
                         </Button>
                     </div>
                 </form>
@@ -181,4 +210,4 @@ const CreateProduct = () => {
     );
 };
 
-export default CreateProduct;
+export default UpdateProduct;

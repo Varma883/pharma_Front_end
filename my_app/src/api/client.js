@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: '/', // Use Vite Proxy to avoid CORS
+    baseURL: '/api', // Use Vite Proxy with /api prefix to avoid CORS and route collision
 });
 
 // Request Interceptor: Attach Token

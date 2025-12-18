@@ -7,6 +7,7 @@ import ProductDetail from './pages/ProductDetail';
 import OrderList from './pages/OrderList';
 import Inventory from './pages/Inventory';
 import CreateProduct from './pages/CreateProduct';
+import UpdateProduct from './pages/UpdateProduct';
 import UserList from './pages/UserList';
 import { useAuth } from './context/AuthContext';
 
@@ -32,6 +33,12 @@ function App() {
         <Route path="catalog/create" element={
           <ProtectedRoute>
             <CreateProduct />
+          </ProtectedRoute>
+        } />
+        {/* Added route for updating a product */}
+        <Route path="catalog/update/:id" element={
+          <ProtectedRoute adminOnly>
+            <UpdateProduct />
           </ProtectedRoute>
         } />
         <Route path="catalog/:id" element={<ProductDetail />} />
