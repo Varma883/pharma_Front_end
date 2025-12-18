@@ -1,10 +1,13 @@
 import React from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, ShoppingBag, ClipboardList, Box, Home } from 'lucide-react';
+import { useCart } from '../context/CartContext';
+import { LogOut, ShoppingBag, ClipboardList, Box, Home, ShoppingCart } from 'lucide-react';
+import CartSidebar from '../components/CartSidebar';
 
 const MainLayout = () => {
     const { user, logout } = useAuth();
+    const { cartItems, setIsCartOpen } = useCart();
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -14,8 +17,33 @@ const MainLayout = () => {
             : "text-gray-600 hover:bg-gray-50 hover:text-gray-900";
     };
 
+    const cartItemCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
+
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col">
+        <div className="min-h-screen bg-gray-50 flex flex-col relative">
+            {/* Sidebar / Floating Cart Icon on Left */}
+            {user && (
+                <div className="fixed left-6 bottom-10 z-[60]">
+                    <button
+                        onClick={() => setIsCartOpen(true)}
+                        className="w-16 h-16 bg-primary text-white rounded-2xl shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all group overflow-visible"
+                        title="View Cart"
+                    >
+                        <ShoppingCart className="w-8 h-8" />
+                        {cartItemCount > 0 && (
+                            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold h-6 w-6 rounded-full flex items-center justify-center border-2 border-white animate-in zoom-in">
+                                {cartItemCount}
+                            </span>
+                        )}
+                        <span className="absolute left-full ml-4 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                            My Cart
+                        </span>
+                    </button>
+                </div>
+            )}
+
+            <CartSidebar />
+
             {/* Navbar */}
             <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -38,10 +66,14 @@ const MainLayout = () => {
                                         <ClipboardList className="w-4 h-4" />
                                         Orders
                                     </Link>
-                                    <Link to="/inventory" className={`px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${isActive('/inventory')}`}>
-                                        <Box className="w-4 h-4" />
-                                        Inventory
-                                    </Link>
+
+                                    {/* Admin Only */}
+                                    {user?.isAdmin && (
+                                        <Link to="/inventory" className={`px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${isActive('/inventory')}`}>
+                                            <Box className="w-4 h-4" />
+                                            Inventory
+                                        </Link>
+                                    )}
 
                                     {/* Admin Only */}
                                     {user?.isAdmin && (
@@ -105,5 +137,6 @@ const MainLayout = () => {
         </div>
     );
 };
+
 
 export default MainLayout;

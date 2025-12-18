@@ -13,10 +13,11 @@ import { useAuth } from './context/AuthContext';
 import LandingPage from './pages/LandingPage';
 
 // Protected Route Wrapper
-const ProtectedRoute = ({ children }) => {
+const ProtectedRoute = ({ children, adminOnly = false }) => {
   const { user, loading } = useAuth();
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   if (!user) return <Navigate to="/login" />;
+  if (adminOnly && !user.isAdmin) return <Navigate to="/catalog" />;
   return children;
 };
 
@@ -48,7 +49,7 @@ function App() {
         } />
 
         <Route path="inventory" element={
-          <ProtectedRoute>
+          <ProtectedRoute adminOnly>
             <Inventory />
           </ProtectedRoute>
         } />
